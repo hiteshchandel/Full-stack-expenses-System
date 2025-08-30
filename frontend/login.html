@@ -152,18 +152,25 @@
             const email = document.getElementById("loginEmail").value.trim();
             const password = document.getElementById("loginPassword").value.trim();
 
-            const res = await fetch('/users/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                alert(`✅ Login Successful! Welcome ${data.name || "User"}`);
-                // window.location.href = "/dashboard";
-            } else {
-                alert(`❌ Login Failed: ${data.message || "Invalid credentials"}`);
+            try {
+                const res = await fetch('/users/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+    
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`✅ Login Successful! Welcome ${data.name || "User"}`);
+                    loginForm.reset();
+                    // window.location.href = "/dashboard";
+                    
+                } else {
+                    alert(`❌ Login Failed: ${data.message || "Invalid credentials"}`);
+                }   
+            } catch (error) {
+                console.error(error); 
+                alert("⚠️ Server error, please try again later.");
             }
         });
 
