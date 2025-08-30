@@ -134,6 +134,8 @@
         const showSignup = document.getElementById("showSignup");
         const showLogin = document.getElementById("showLogin");
 
+        const BASE_URL = "http://localhost:3000/api/auth";
+
         // Switch to Signup
         showSignup.addEventListener("click", () => {
             loginForm.classList.add("hidden");
@@ -164,7 +166,7 @@
                     alert(`✅ Login Successful! Welcome ${data.name || "User"}`);
                     loginForm.reset();
                     // window.location.href = "/dashboard";
-                    
+
                 } else {
                     alert(`❌ Login Failed: ${data.message || "Invalid credentials"}`);
                 }   
@@ -183,7 +185,7 @@
             const mobile = document.getElementById("signupMobile").value.trim();
 
             try {
-                const res = await fetch('/users/signUp', {
+                const res = await fetch(`${BASE_URL}/signup`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, email, password, mobile })
