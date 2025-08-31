@@ -155,7 +155,7 @@
             const password = document.getElementById("loginPassword").value.trim();
 
             try {
-                const res = await fetch('/users/login', {
+                const res = await fetch(`${BASE_URL}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -163,7 +163,7 @@
     
                 const data = await res.json();
                 if (res.ok) {
-                    alert(`✅ Login Successful! Welcome ${data.name || "User"}`);
+                    alert(`✅ Login Successful! Welcome ${data.user.name || "User"}`);
                     loginForm.reset();
                     // window.location.href = "/dashboard";
 
@@ -193,7 +193,7 @@
 
                 const data = await res.json();
                 if (res.ok) {
-                    alert(`🎉 Signup Successful! Please login.`);
+                    alert(`🎉 Signup Successful! ${data.user.name}, Please login.`);
                     signupForm.reset();
                     signupForm.classList.add("hidden");
                     loginForm.classList.remove("hidden");
