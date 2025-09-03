@@ -13,12 +13,15 @@ const User = sequelize.define('User', {
     },
     email: {
         type: DataTypes.STRING,
-        unique: true,
         allowNull: false,
+        unique: {
+            name: "unique_user_email",   // 👈 add a fixed name
+            msg: "Email must be unique"
+        },
         validate: {
             isEmail: true
         }
-    },
+},
     password: {
         type: DataTypes.STRING,
         allowNull: false
@@ -26,6 +29,10 @@ const User = sequelize.define('User', {
     mobile: {
         type: DataTypes.STRING,
         allowNull: false,
+    },
+    isPremium: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 }, {
     timestamps: true

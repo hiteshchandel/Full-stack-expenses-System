@@ -163,9 +163,10 @@
     
                 const data = await res.json();
                 if (res.ok) {
+                    localStorage.setItem('token', data.token); // Store token for authenticated requests
                     alert(`✅ Login Successful! Welcome ${data.user.name || "User"}`);
                     loginForm.reset();
-                    // window.location.href = "/dashboard";
+                    window.location.href = "expense.html";
 
                 } else {
                     alert(`❌ Login Failed: ${data.message || "Invalid credentials"}`);

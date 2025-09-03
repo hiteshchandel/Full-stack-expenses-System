@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Expense Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 800px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4 p-3 rounded shadow-sm bg-light border">
+            <h2 class="mb-0 fw-bold text-primary d-flex align-items-center">
+                <span class="me-2">💰</span>
+                Expense Tracker
+            </h2>
+            <button class="btn btn-gradient px-4 py-2 fw-semibold rounded shadow-sm bg-light">
+                🌟 Premium Account
+            </button>
+        </div>
+        
+
+        <!-- Add Expense Form -->
+        <form id="expenseForm" class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <input type="number" step="0.01" class="form-control" id="amount" placeholder="Amount" required>
+                </div>
+                <div class="col-md-5">
+                    <input type="text" class="form-control" id="description" placeholder="Description" required>
+                </div>
+                <div class="col-md-3">
+                    <select id="category" class="form-control" required>
+                        <option value="">Select Category</option>
+                        <option value="Food & Drinks">🍔 Food & Drinks</option>
+                        <option value="Transport">🚌 Transport</option>
+                        <option value="Utilities">💡 Utilities (Electricity, Water, Gas)</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Groceries">🥦 Groceries</option>
+                        <option value="Rent">🏠 Rent</option>
+                        <option value="Healthcare">⚕️ Healthcare / Medical</option>
+                        <option value="Education">📚 Education</option>
+                        <option value="Entertainment">🎬 Entertainment</option>
+                        <option value="Travel">✈️ Travel</option>
+                        <option value="Subscriptions">📺 Subscriptions</option>
+                        <option value="Insurance">🛡️ Insurance</option>
+                        <option value="Savings">💰 Savings</option>
+                        <option value="Charity">🤝 Charity / Donations</option>
+                        <option value="Other">➕ Other</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button type="submit" class="btn btn-success">Add</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Expenses Table -->
+        <table class="table table-bordered table-striped" id="expenseTable">
+            <thead class="table-dark">
+                <tr>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Created At</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="expenseBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const BASE_URL = "http://localhost:3000/api/expense"; // adjust if needed
+
+        const expenseForm = document.getElementById("expenseForm");
+        const expenseBody = document.getElementById("expenseBody");
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert("⚠️ You must be logged in to view this page.");
+            window.location.href = "login.html";
+        }
+
+        // Fetch and show all expenses
+        async function fetchExpenses() {
+            try {
+                const res = await fetch(`${BASE_URL}/get`,{
+                    headers: {"Authorization": `Bearer ${token}`}
+                });
+                const expenses = await res.json();
+                if(!res.ok) throw new Error(expenses.message || "Failed to fetch expenses");
+
+                expenseBody.innerHTML = "";
+                expenses.forEach(exp => {
+                    const row = `
+                        <tr>
+                            
+                            <td>₹${exp.amount.toFixed(2)}</td>
+                            <td>${exp.description}</td>
+                            <td>${exp.category}</td>
+                            <td>${new Date(exp.createdAt).toLocaleString()}</td>
+                            <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteExpense(${exp.id})">Delete</button>
+                            </td>
+                        </tr>
+                        `;
+                    expenseBody.insertAdjacentHTML("beforeend", row);
+                });
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Could not fetch expenses.");
+            }
+        }
+
+        // Add Expense
+        expenseForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const amount = document.getElementById("amount").value;
+            const description = document.getElementById("description").value;
+            const category = document.getElementById("category").value;
+
+            try {
+                const res = await fetch(`${BASE_URL}/add`, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ amount, description, category })
+                });
+
+                if (res.ok) {
+                    expenseForm.reset();
+                    fetchExpenses();
+                } else {
+                    const data = await res.json();
+                    alert("❌ Failed to add expense: " + (data.message || "Unknown error"));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Error adding expense.");
+            }
+        });
+
+        // Delete Expense
+        async function deleteExpense(id) {
+            if (!confirm("Are you sure you want to delete this expense?")) return;
+
+            try {
+                const res = await fetch(`${BASE_URL}/delete/${id}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                if (res.ok) {
+                    fetchExpenses();
+                } else {
+                    alert("❌ Failed to delete expense.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Error deleting expense.");
+            }
+        }
+
+        // Initial load
+        fetchExpenses();
+    </script>
+</body>
+
+</html>
