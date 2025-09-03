@@ -7,6 +7,7 @@ const {sequelize }= require('./models/association');
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const userRoutes = require('./routes/userRoutes')
 
 
 const app = express();
@@ -17,6 +18,7 @@ app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/expense', expenseRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/user', userRoutes);
 
 sequelize.sync({alter:true})
     .then(() => {

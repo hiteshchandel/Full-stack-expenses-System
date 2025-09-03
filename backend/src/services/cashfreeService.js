@@ -30,7 +30,7 @@ exports.createOrder = async (
                 customer_phone
             },
             order_meta: {
-                return_url: `http://localhost:3000/payment/callback?order_id=${order_id}`,
+                return_url: `http://127.0.0.1:5500/frontend/expense.html`,
                 notify_url: "http://localhost:3000/payment/notify",
                 payment_methods: "cc,dc,upi"
             },

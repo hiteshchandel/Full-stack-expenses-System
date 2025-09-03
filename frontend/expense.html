@@ -79,6 +79,114 @@
             <tbody id="expenseBody"></tbody>
         </table>
     </div>
+    <script src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.sandbox.js"></script>
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert("⚠️ You must be logged in to view this page.");
+            window.location.href = "login.html";
+        }
+
+        const premiumBtn = document.querySelector(".btn-gradient");
+
+        // 🔹 On page load, check if user is already premium
+        async function checkUserPremium() {
+            try {
+                const res = await fetch('http://localhost:3000/api/user/', {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                const result = await res.json();
+
+                if (!res.ok || !result.success) {
+                    console.error("Failed to fetch user:", result.message || "Unknown error");
+                    return;
+                }
+
+                const user = result.data;
+
+                if (user.isPremium) {
+                    premiumBtn.innerText = "✅ Premium Active";
+                    premiumBtn.disabled = true;
+                }
+            } catch (err) {
+                console.error("Failed to fetch user info", err);
+            }
+        }
+        checkUserPremium();
+
+        // 🔹 Start payment when button is clicked
+        premiumBtn.addEventListener("click", async () => {
+            try {
+                const res = await fetch("http://localhost:3000/api/payments/create", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                const data = await res.json();
+                if (!res.ok || !data.paymentSessionId) throw new Error(data.error || "Payment init failed");
+
+                const { paymentSessionId, order_id } = data;
+                localStorage.setItem("pendingOrderId", order_id);
+
+                const cashfree = new Cashfree(paymentSessionId);
+                await cashfree.redirect();
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Error starting payment.");
+            }
+        });
+
+        // 🔹 After redirect, check order status
+        window.addEventListener("load", () => {
+            const order_id = localStorage.getItem("pendingOrderId");
+            if (order_id) {
+                const checkStatus = async () => {
+                    try {
+                        const statusRes = await fetch(`http://localhost:3000/api/payments/status/${order_id}`, {
+                            headers: { "Authorization": `Bearer ${token}` }
+                        });
+                        const statusData = await statusRes.json();
+
+                        if (statusData.status === "SUCCESS") {
+                            alert("🎉 Payment successful! You are now a Premium user.");
+                            premiumBtn.innerText = "✅ Premium Active";
+                            premiumBtn.disabled = true;
+                            localStorage.removeItem("pendingOrderId");
+                        } else if (statusData.status === "FAILED") {
+                            alert("❌ Payment failed. Try again.");
+                            localStorage.removeItem("pendingOrderId");
+                        } else {
+                            setTimeout(checkStatus, 5000);
+                        }
+                    } catch (err) {
+                        console.error("Status check failed:", err);
+                    }
+                };
+                checkStatus();
+            }
+        });
+    </script>
+
+
+    <!-- <script>
+
+        fetch('http://localhost:3000/api/user/', {
+                headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then((res)=>{
+            return res.json();
+        })
+        .then((user)=>{
+            if(user.isPremium == true){
+                document.querySelector(".btn-gradient").innerText = "✅ Premium Active";
+                document.querySelector(".btn-gradient").disabled = true;
+            }
+        })
+    </script> -->
 
     <script>
         const BASE_URL = "http://localhost:3000/api/expense"; // adjust if needed
@@ -86,7 +194,7 @@
         const expenseForm = document.getElementById("expenseForm");
         const expenseBody = document.getElementById("expenseBody");
 
-        const token = localStorage.getItem('token');
+        // const token = localStorage.getItem('token');
         if (!token) {
             alert("⚠️ You must be logged in to view this page.");
             window.location.href = "login.html";
