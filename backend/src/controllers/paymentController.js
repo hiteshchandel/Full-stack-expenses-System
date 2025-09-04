@@ -1,9 +1,12 @@
 const Payment = require('../models/Payment');
 const User = require('../models/User');
 const { createOrder, getPaymentStatus } = require('../services/cashfreeService');
+const sequelize = require('../config/db')
 
 
 exports.createPayment = async (req, res) => {
+    const t = await sequelize.transaction();
+
     const order_amount = "999";
     const order_id = "order_" + Date.now();
     const customer_id = String(req.user.id);
@@ -28,32 +31,40 @@ exports.createPayment = async (req, res) => {
             amount: order_amount,
             orderCurrency: "INR",
             paymentStatus: "PENDING"
-        });
+        }, { transaction: t });
+        
+        await t.commit();
         res.status(201).json({ paymentSessionId, order_id });
     } catch (error) {
+        await t.rollback();
         console.error("Error creating payment:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
 
 exports.updatePaymentStatus = async (req, res) => {
+    const t = await sequelize.transaction();
     const { orderId } = req.params;
 
     try {
         const status = await getPaymentStatus(orderId);
         await Payment.update(
             { paymentStatus: status },
-            { where: { orderId } }
+            { where: { orderId } , transaction : t}
         );
         if (status === "SUCCESS") {
-            const user = await User.findOne({
-                where: { id: req.user.id }
-            });
+            const user = await User.findByPk(
+                req.user.id,
+                {transaction : t}
+            );
             user.isPremium = true;
-            await user.save();
+            await user.save({transaction : t});
         }
+
+        await t.commit();
         return res.status(200).json({ message: "Payment status updated", status });
     } catch (error) {
+        await t.rollback();
         console.error("Error updating payment status:", error);
         return res.status(500).json({ error: "Internal server error" });
     }

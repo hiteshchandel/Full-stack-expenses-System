@@ -1,22 +1,28 @@
 const Expense = require('../models/Expense');
 const User = require('../models/User');
-const { Sequelize } = require('sequelize');
+const sequelize = require('../config/db');
 
 exports.createExpense = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { amount, description, category } = req.body;
-        console.log(req.user);
-        const newExpense = await Expense.create({
-            amount, description, category,
-            userId: req.user.id
-        });
-        const user = await User.findByPk(req.user.id);
-        user.totalExpense = (parseFloat(user.totalExpense) || 0) + parseFloat(amount);
-        await user.save();
 
+        const newExpense = await Expense.create({
+            amount,
+            description,
+            category,
+            userId: req.user.id
+        }, { transaction: t });
+
+        const user = await User.findByPk(req.user.id, { transaction: t });
+        user.totalExpense = (parseFloat(user.totalExpense) || 0) + parseFloat(amount);
+        await user.save({ transaction: t });
+
+        await t.commit();
         res.status(201).json(newExpense);
     } catch (error) {
-        console.log(Error, error);
+        await t.rollback();
+        console.error("❌ Error creating expense:", error);
         res.status(500).json({ error: 'Failed to create expense' });
     }
 };
@@ -28,31 +34,40 @@ exports.getExpenses = async (req, res) => {
         });
         res.status(200).json(expenses);
     } catch (error) {
+        console.error("❌ Error fetching expenses:", error);
         res.status(500).json({ error: 'Failed to retrieve expenses' });
     }
 };
 
 exports.deleteExpense = async (req, res) => {
+    const t = await sequelize.transaction();
     try {
         const { id } = req.params;
+
         const expense = await Expense.findOne({
-            where: { id },
-            userId: req.user.id
+            where: { id, userId: req.user.id },
+            transaction: t
         });
+
         if (!expense) {
+            await t.rollback();
             return res.status(404).json({ error: 'Expense not found' });
         }
 
-        const user = await User.findByPk(req.user.id);
-        user.totalExpense = parseFloat(user.totalExpense) - parseFloat(expense.amount);
-        await user.save();
+        const user = await User.findByPk(req.user.id, { transaction: t });
+        user.totalExpense = Math.max(0, parseFloat(user.totalExpense) - parseFloat(expense.amount));
+        await user.save({ transaction: t });
 
         await Expense.destroy({
-            where: { id }
+            where: { id, userId: req.user.id },
+            transaction: t
         });
 
-        res.status(204).send();        
+        await t.commit();
+        res.status(204).send();
     } catch (error) {
+        await t.rollback();
+        console.error("❌ Error deleting expense:", error);
         res.status(500).json({ error: 'Failed to delete expense' });
     }
 };
