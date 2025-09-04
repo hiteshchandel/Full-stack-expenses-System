@@ -1,6 +1,4 @@
-const { Sequelize, Op } = require('sequelize'); // ✅ directly from package
 const User = require('../models/User');
-const Expense = require('../models/Expense');
 
 exports.getUser = async (req, res) => {
     try {
@@ -33,20 +31,11 @@ exports.getUser = async (req, res) => {
 
 exports.getAllUserTotalExpenseIfIsPremium = async (req, res) => {
     try {
+        // Only fetch users who are premium and order by totalExpense
         const users = await User.findAll({
-            attributes: [
-                "id",
-                "name",
-                [Sequelize.fn("COALESCE", Sequelize.fn("SUM", Sequelize.col("Expenses.amount")), 0), "totalExpense"]
-            ],
-            include: [
-                {
-                    model: Expense,
-                    attributes: []
-                }
-            ],
-            group: ["User.id", "User.name"],
-            order: [[Sequelize.literal("totalExpense"), "DESC"]]
+            attributes: ["id", "name", "totalExpense"],
+            // where: { isPremium: true },
+            order: [["totalExpense", "DESC"]]
         });
 
         res.status(200).json({ success: true, data: users });
