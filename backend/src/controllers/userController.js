@@ -51,7 +51,7 @@ exports.getAllUserTotalExpenseIfIsPremium = async (req, res) => {
 
         res.status(200).json({ success: true, data: users });
     } catch (error) {
-        console.error("❌ Error fetching user expenses:", error);
+        console.log("❌ Error fetching user expenses:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

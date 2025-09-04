@@ -21,14 +21,18 @@
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4 p-3 rounded shadow-sm bg-light border">
             <h2 class="mb-0 fw-bold text-primary d-flex align-items-center">
-                <span class="me-2">💰</span>
-                Expense Tracker
+                <span class="me-2">💰</span> Expense Tracker
             </h2>
-            <button class="btn btn-gradient px-4 py-2 fw-semibold rounded shadow-sm bg-light">
-                🌟 Premium Account
-            </button>
+            <div>
+                <button id="premiumBtn" class="btn btn-gradient px-4 py-2 fw-semibold rounded shadow-sm bg-light">
+                    🌟 Premium Account
+                </button>
+                <button id="leaderboardBtn" class="btn btn-info px-3 py-2 fw-semibold rounded shadow-sm ms-2"
+                    style="display:none;">
+                    🏆 Leaderboard
+                </button>
+            </div>
         </div>
-        
 
         <!-- Add Expense Form -->
         <form id="expenseForm" class="mb-4">
@@ -44,18 +48,18 @@
                         <option value="">Select Category</option>
                         <option value="Food & Drinks">🍔 Food & Drinks</option>
                         <option value="Transport">🚌 Transport</option>
-                        <option value="Utilities">💡 Utilities (Electricity, Water, Gas)</option>
+                        <option value="Utilities">💡 Utilities</option>
                         <option value="Shopping">🛍️ Shopping</option>
                         <option value="Groceries">🥦 Groceries</option>
                         <option value="Rent">🏠 Rent</option>
-                        <option value="Healthcare">⚕️ Healthcare / Medical</option>
+                        <option value="Healthcare">⚕️ Healthcare</option>
                         <option value="Education">📚 Education</option>
                         <option value="Entertainment">🎬 Entertainment</option>
                         <option value="Travel">✈️ Travel</option>
                         <option value="Subscriptions">📺 Subscriptions</option>
                         <option value="Insurance">🛡️ Insurance</option>
                         <option value="Savings">💰 Savings</option>
-                        <option value="Charity">🤝 Charity / Donations</option>
+                        <option value="Charity">🤝 Charity</option>
                         <option value="Other">➕ Other</option>
                     </select>
                 </div>
@@ -78,54 +82,72 @@
             </thead>
             <tbody id="expenseBody"></tbody>
         </table>
+
+        <!-- Leaderboard Modal -->
+        <div class="modal fade" id="leaderboardModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Leaderboard - Top Spenders</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-bordered table-striped" id="leaderboardTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>User Name</th>
+                                    <th>Total Expense</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
     <script src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.sandbox.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
         const token = localStorage.getItem('token');
-        if (!token) {
-            alert("⚠️ You must be logged in to view this page.");
-            window.location.href = "login.html";
-        }
+        if (!token) { alert("⚠️ Login required"); window.location.href = "login.html"; }
 
-        const premiumBtn = document.querySelector(".btn-gradient");
+        const premiumBtn = document.getElementById("premiumBtn");
+        const leaderboardBtn = document.getElementById("leaderboardBtn");
+        const leaderboardBody = document.getElementById("leaderboardBody");
 
-        // 🔹 On page load, check if user is already premium
+        // Check if user is premium
         async function checkUserPremium() {
             try {
                 const res = await fetch('http://localhost:3000/api/user/', {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-
                 const result = await res.json();
-
-                if (!res.ok || !result.success) {
-                    console.error("Failed to fetch user:", result.message || "Unknown error");
-                    return;
-                }
-
+                if (!res.ok || !result.success) return;
                 const user = result.data;
 
                 if (user.isPremium) {
-                    premiumBtn.innerText = "✅ Premium Active";
-                    premiumBtn.disabled = true;
+                    activatePremiumUI();
                 }
-            } catch (err) {
-                console.error("Failed to fetch user info", err);
-            }
+            } catch (err) { console.error(err); }
         }
-        checkUserPremium();
 
-        // 🔹 Start payment when button is clicked
+        function activatePremiumUI() {
+            premiumBtn.innerText = "✅ Premium Active";
+            premiumBtn.disabled = true;
+            leaderboardBtn.style.display = "inline-block";
+        }
+
+        // Premium payment
         premiumBtn.addEventListener("click", async () => {
             try {
                 const res = await fetch("http://localhost:3000/api/payments/create", {
                     method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
+                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
                 });
-
                 const data = await res.json();
                 if (!res.ok || !data.paymentSessionId) throw new Error(data.error || "Payment init failed");
 
@@ -134,105 +156,90 @@
 
                 const cashfree = new Cashfree(paymentSessionId);
                 await cashfree.redirect();
-            } catch (err) {
-                console.error(err);
-                alert("⚠️ Error starting payment.");
-            }
+            } catch (err) { console.error(err); alert("⚠️ Payment failed"); }
         });
 
-        // 🔹 After redirect, check order status
+        // Check payment status after redirect
         window.addEventListener("load", () => {
             const order_id = localStorage.getItem("pendingOrderId");
-            if (order_id) {
-                const checkStatus = async () => {
-                    try {
-                        const statusRes = await fetch(`http://localhost:3000/api/payments/status/${order_id}`, {
-                            headers: { "Authorization": `Bearer ${token}` }
-                        });
-                        const statusData = await statusRes.json();
+            if (!order_id) return;
 
-                        if (statusData.status === "SUCCESS") {
-                            alert("🎉 Payment successful! You are now a Premium user.");
-                            premiumBtn.innerText = "✅ Premium Active";
-                            premiumBtn.disabled = true;
-                            localStorage.removeItem("pendingOrderId");
-                        } else if (statusData.status === "FAILED") {
-                            alert("❌ Payment failed. Try again.");
-                            localStorage.removeItem("pendingOrderId");
-                        } else {
-                            setTimeout(checkStatus, 5000);
-                        }
-                    } catch (err) {
-                        console.error("Status check failed:", err);
+            const checkStatus = async () => {
+                try {
+                    const res = await fetch(`http://localhost:3000/api/payments/status/${order_id}`, {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    });
+                    const statusData = await res.json();
+
+                    if (statusData.status === "SUCCESS") {
+                        alert("🎉 Payment successful! You are now a Premium user.");
+                        activatePremiumUI();
+                        localStorage.removeItem("pendingOrderId");
+                    } else if (statusData.status === "FAILED") {
+                        alert("❌ Payment failed. Try again.");
+                        localStorage.removeItem("pendingOrderId");
+                    } else {
+                        setTimeout(checkStatus, 5000);
                     }
-                };
-                checkStatus();
-            }
+                } catch (err) { console.error(err); }
+            };
+            checkStatus();
         });
-    </script>
 
+        // Fetch leaderboard
+        async function fetchLeaderboard() {
+            try {
+                const res = await fetch("http://localhost:3000/api/user/premium/showleaderboad", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error("Failed to fetch leaderboard");
 
-    <!-- <script>
+                leaderboardBody.innerHTML = "";
+                data.data.forEach((user, index) => {
+                    leaderboardBody.insertAdjacentHTML("beforeend", `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${user.name}</td>
+                            <td>₹${parseFloat(user.totalExpense).toFixed(2)}</td>
+                        </tr>`);
+                });
 
-        fetch('http://localhost:3000/api/user/', {
-                headers: { "Authorization": `Bearer ${token}` }
-        })
-        .then((res)=>{
-            return res.json();
-        })
-        .then((user)=>{
-            if(user.isPremium == true){
-                document.querySelector(".btn-gradient").innerText = "✅ Premium Active";
-                document.querySelector(".btn-gradient").disabled = true;
-            }
-        })
-    </script> -->
+                new bootstrap.Modal(document.getElementById('leaderboardModal')).show();
+            } catch (err) { console.error(err); alert("⚠️ Could not fetch leaderboard."); }
+        }
 
-    <script>
-        const BASE_URL = "http://localhost:3000/api/expense"; // adjust if needed
+        leaderboardBtn.addEventListener("click", fetchLeaderboard);
+        checkUserPremium();
 
+        // Expense handling
+        const BASE_URL = "http://localhost:3000/api/expense";
         const expenseForm = document.getElementById("expenseForm");
         const expenseBody = document.getElementById("expenseBody");
 
-        // const token = localStorage.getItem('token');
-        if (!token) {
-            alert("⚠️ You must be logged in to view this page.");
-            window.location.href = "login.html";
-        }
-
-        // Fetch and show all expenses
         async function fetchExpenses() {
             try {
-                const res = await fetch(`${BASE_URL}/get`,{
-                    headers: {"Authorization": `Bearer ${token}`}
-                });
+                const res = await fetch(`${BASE_URL}/get`, { headers: { "Authorization": `Bearer ${token}` } });
                 const expenses = await res.json();
-                if(!res.ok) throw new Error(expenses.message || "Failed to fetch expenses");
+                if (!res.ok) throw new Error(expenses.message || "Failed to fetch expenses");
 
                 expenseBody.innerHTML = "";
                 expenses.forEach(exp => {
-                    const row = `
+                    expenseBody.insertAdjacentHTML("beforeend", `
                         <tr>
-                            
                             <td>₹${exp.amount.toFixed(2)}</td>
                             <td>${exp.description}</td>
                             <td>${exp.category}</td>
                             <td>${new Date(exp.createdAt).toLocaleString()}</td>
                             <td>
-                            <button class="btn btn-danger btn-sm" onclick="deleteExpense(${exp.id})">Delete</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteExpense(${exp.id})">Delete</button>
                             </td>
-                        </tr>
-                        `;
-                    expenseBody.insertAdjacentHTML("beforeend", row);
+                        </tr>`);
                 });
-            } catch (err) {
-                console.error(err);
-                alert("⚠️ Could not fetch expenses.");
-            }
+            } catch (err) { console.error(err); alert("⚠️ Could not fetch expenses."); }
         }
 
-        // Add Expense
-        expenseForm.addEventListener("submit", async (e) => {
+        expenseForm.addEventListener("submit", async e => {
             e.preventDefault();
             const amount = document.getElementById("amount").value;
             const description = document.getElementById("description").value;
@@ -241,49 +248,22 @@
             try {
                 const res = await fetch(`${BASE_URL}/add`, {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                     body: JSON.stringify({ amount, description, category })
                 });
-
-                if (res.ok) {
-                    expenseForm.reset();
-                    fetchExpenses();
-                } else {
-                    const data = await res.json();
-                    alert("❌ Failed to add expense: " + (data.message || "Unknown error"));
-                }
-            } catch (err) {
-                console.error(err);
-                alert("⚠️ Error adding expense.");
-            }
+                if (res.ok) { expenseForm.reset(); fetchExpenses(); }
+                else { const data = await res.json(); alert("❌ Failed to add expense: " + (data.message || "Unknown error")); }
+            } catch (err) { console.error(err); alert("⚠️ Error adding expense."); }
         });
 
-        // Delete Expense
         async function deleteExpense(id) {
             if (!confirm("Are you sure you want to delete this expense?")) return;
-
             try {
-                const res = await fetch(`${BASE_URL}/delete/${id}`, {
-                    method: "DELETE",
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    }
-                });
-                if (res.ok) {
-                    fetchExpenses();
-                } else {
-                    alert("❌ Failed to delete expense.");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("⚠️ Error deleting expense.");
-            }
+                const res = await fetch(`${BASE_URL}/delete/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
+                if (res.ok) fetchExpenses(); else alert("❌ Failed to delete expense.");
+            } catch (err) { console.error(err); alert("⚠️ Error deleting expense."); }
         }
 
-        // Initial load
         fetchExpenses();
     </script>
 </body>
