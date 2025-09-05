@@ -53,12 +53,12 @@
                 <small class="text-muted">Enter 10-digit mobile number</small>
             </div>
             <button type="submit" class="btn btn-success w-100">Signup</button>
-            <p class="mt-3 text-center">Already have an account? <a href="http://localhost:3000/">Login</a></p>
+            <p class="mt-3 text-center">Already have an account? <a href='/'>Login</a></p>
         </form>
     </div>
 
     <script>
-        const BASE_URL = "http://localhost:3000/api/auth";
+        const BASE_URL = "/api/auth";
 
         document.getElementById("signupForm").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -77,7 +77,8 @@
                 const data = await res.json();
                 if (res.ok) {
                     alert(`🎉 Signup Successful! Please login.`);
-                    window.location.href = "/login"; // redirect after signup
+                    e.target.reset();
+                    window.location.href = '/'; // redirect after signup
                 } else {
                     alert(`❌ Signup Failed: ${data.message}`);
                 }
