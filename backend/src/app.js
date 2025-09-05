@@ -28,7 +28,7 @@ app.get('/signup', (req, res) => {
 });
 
 app.get('/expenses', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'expense.html'))
+    res.sendFile(path.join(__dirname, 'views', 'expense.html'));
 });
 
 app.use('/api/auth', authRoutes);
