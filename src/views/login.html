@@ -99,7 +99,13 @@
                     localStorage.setItem("token", data.token);
                     alert(`✅ Login Successful! Welcome ${data.user.name || "User"}`);
                     e.target.reset();
-                    window.location.href = "/expenses";
+                    console.log(`${data.user.isPremium}`)
+                    if (!data.user.isPremium) {
+                        window.location.href = "/expenses"; // or premiumExpense.html
+                    } else {
+                        window.location.href = "/premium"; // or expense.html
+                    }
+                    
                 } else {
                     alert(`❌ Login Failed: ${data.message}`);
                 }

@@ -31,6 +31,10 @@ app.get('/expenses', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'expense.html'));
 });
 
+app.get('/premium', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'premiumExpense.html'));
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/expense', expenseRoutes);
 app.use('/api/payments', paymentRoutes);

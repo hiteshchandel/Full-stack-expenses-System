@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Expense Tracker with Leaderboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- ✅ Responsive scaling -->
+    <title>Expense Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -21,39 +21,25 @@
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-
-        #leaderboardContainer {
-            display: none;
-        }
-
-        /* ✅ Make table scrollable on mobile */
-        .table-responsive {
-            overflow-x: auto;
-        }
     </style>
 </head>
 
 <body>
     <div class="container main-container">
 
-        <!-- Expense Tracker -->
         <div class="card p-4 mb-4">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+            <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="fw-bold text-primary">💰 Expense Tracker</h3>
-                <button id="premiumBtn" class="btn btn-gradient fw-semibold shadow-sm">
-                    🌟 Premium Account
-                </button>
+                <button id="premiumBtn" class="btn btn-gradient fw-semibold shadow-sm">🌟 Premium Account</button>
             </div>
 
             <!-- Add Expense Form -->
             <form id="expenseForm" class="mb-3">
                 <div class="row g-2">
-                    <div class="col-12 col-md-3">
-                        <input type="number" step="0.01" class="form-control" id="amount" placeholder="Amount" required>
-                    </div>
-                    <div class="col-12 col-md-5">
-                        <input type="text" class="form-control" id="description" placeholder="Description" required>
-                    </div>
+                    <div class="col-12 col-md-3"><input type="number" step="0.01" class="form-control" id="amount"
+                            placeholder="Amount" required></div>
+                    <div class="col-12 col-md-5"><input type="text" class="form-control" id="description"
+                            placeholder="Description" required></div>
                     <div class="col-12 col-md-3">
                         <select id="category" class="form-control" required>
                             <option value="">Select Category</option>
@@ -74,8 +60,7 @@
                             <option>➕ Other</option>
                         </select>
                     </div>
-                    <div class="col-12 col-md-1 d-grid">
-                        <button type="submit" class="btn btn-success w-100">Add</button>
+                    <div class="col-12 col-md-1 d-grid"><button type="submit" class="btn btn-success w-100">Add</button>
                     </div>
                 </div>
             </form>
@@ -96,258 +81,132 @@
                 </table>
             </div>
 
-            <!-- Leaderboard Button -->
-            <div class="text-center mt-3">
-                <button id="leaderboardBtn" class="btn btn-info px-4 py-2 fw-semibold shadow-sm d-none">
-                    🏆 Show Leaderboard
-                </button>
-            </div>
-
         </div>
-
-        <!-- Leaderboard -->
-        <div id="leaderboardContainer" class="card p-4">
-            <h3 class="fw-bold text-success mb-3">🏆 Leaderboard</h3>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped text-center align-middle">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Rank</th>
-                            <th>User</th>
-                            <th>Total Expense</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboardBody">
-                        <tr>
-                            <td colspan="3" class="text-center">No data yet</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
     </div>
 
     <script src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.sandbox.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 
     <script>
         const token = localStorage.getItem('token');
         if (!token) { alert("⚠️ Login required"); window.location.href = "/"; }
 
         const premiumBtn = document.getElementById("premiumBtn");
-        const leaderboardBtn = document.getElementById("leaderboardBtn");
-        const leaderboardContainer = document.getElementById("leaderboardContainer");
-        const leaderboardBody = document.getElementById("leaderboardBody");
-        let editMode = false;
-        let editId = null;
-        // ✅ Check if user is premium
-        async function checkUserPremium() {
-            try {
-                const res = await fetch('/api/user/', {
-                    headers: { "Authorization": `Bearer ${token}` } 
-                });
-                const result = await res.json();
-                if (!res.ok || !result.success) return;
-                const user = result.data;
+        let editMode = false, editId = null;
 
-                if (user.isPremium) {
-                    activatePremiumUI();
-                }
-            } catch (err) { console.error(err); }
-        }
-
-        function activatePremiumUI() {
-            premiumBtn.innerText = "✅ Premium Active";
-            premiumBtn.disabled = true;
-            leaderboardBtn.classList.remove("d-none"); // ✅ Show only for premium users
-        }
-
-        // ✅ Premium payment
-        premiumBtn.addEventListener("click", async () => {
-            try {
-                const res = await fetch("/api/payments/create", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
-                });
-                const data = await res.json();
-                if (!res.ok || !data.paymentSessionId) throw new Error(data.error || "Payment init failed");
-
-                const { paymentSessionId, order_id } = data;
-                localStorage.setItem("pendingOrderId", order_id);
-
-                const cashfree = new Cashfree(paymentSessionId);
-                await cashfree.redirect();
-            } catch (err) { console.error(err); alert("⚠️ Payment failed"); }
-        });
-
-        // Check payment status after redirect
-        window.addEventListener("load",()=>{
-            const order_id = localStorage.getItem("pendingOrderId");
-            if(!order_id) return;
-
-            const checkStatus = async ()=>{
-                try {
-                    const res = await fetch(`/api/payments/status/${order_id}`,{
-                        headers : {"Authorization" : `Bearer ${token}`}
-                    });
-
-                    const statusData = await res.json();
-
-                    if(statusData.status === "SUCCESS"){
-                        alert("🎉 Payment successful! You are now a Premium user.");
-                        activatePremiumUI();
-                        localStorage.removeItem("pendingOrderId");
-                    } else if(statusData.status === "FAILED"){
-                        alert("❌ Payment failed. Try again.");
-                        localStorage.removeItem("pendingOrderId");
-                    } else {
-                        setTimeout(checkStatus, 5000);
-                    }
-                } catch (error) {
-                    console.error(error);
-                }
-            };
-            checkStatus();
-        })
-
-        // ✅ Fetch Leaderboard
-        async function fetchLeaderboard() {
-            try {
-                const res = await fetch("/api/user/premium/showleaderboad", {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                const data = await res.json();
-                if (!res.ok || !data.success) throw new Error("Failed to fetch leaderboard");
-
-                leaderboardBody.innerHTML = "";
-                data.data.forEach((user, index) => {
-                    leaderboardBody.insertAdjacentHTML("beforeend", `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${user.name}</td>
-                            <td>₹${parseFloat(user.totalExpense).toFixed(2)}</td>
-                        </tr>`);
-                });
-            } catch (err) { console.error(err); alert("⚠️ Could not fetch leaderboard."); }
-        }
-
-        // ✅ Toggle Leaderboard
-        leaderboardBtn.addEventListener("click", async () => {
-            if (leaderboardContainer.style.display === "none" || leaderboardContainer.style.display === "") {
-                await fetchLeaderboard(); // load data
-                leaderboardContainer.style.display = "block";
-                leaderboardBtn.innerText = "🙈 Hide Leaderboard";
-            } else {
-                leaderboardContainer.style.display = "none";
-                leaderboardBtn.innerText = "🏆 Show Leaderboard";
-            }
-        });
-
-        checkUserPremium();
-
-        // ✅ Expense handling
         const BASE_URL = "/api/expense";
         const expenseForm = document.getElementById("expenseForm");
         const expenseBody = document.getElementById("expenseBody");
 
+        // Fetch Expenses
         async function fetchExpenses() {
             try {
                 const res = await fetch(`${BASE_URL}/get`, { headers: { "Authorization": `Bearer ${token}` } });
                 const expenses = await res.json();
-                if (!res.ok) throw new Error(expenses.message || "Failed to fetch expenses");
-
                 expenseBody.innerHTML = "";
                 expenses.forEach(exp => {
                     expenseBody.insertAdjacentHTML("beforeend", `
-                    <tr>
+                <tr>
                     <td>₹${exp.amount.toFixed(2)}</td>
                     <td>${exp.description}</td>
                     <td>${exp.category}</td>
                     <td>${new Date(exp.createdAt).toLocaleString()}</td>
                     <td>
-                        <button class="btn btn-warning btn-sm" onclick="editExpense(${exp.id}, ${exp.amount}, '${exp.description}', '${exp.category}')">Update</button>
+                        <button class="btn btn-warning btn-sm" onclick="editExpense(${exp.id},${exp.amount},'${exp.description}','${exp.category}')">Update</button>
                         <button class="btn btn-danger btn-sm" onclick="deleteExpense(${exp.id})">Delete</button>
                     </td>
-                    </tr>`);
+                </tr>`);
                 });
             } catch (err) { console.error(err); alert("⚠️ Could not fetch expenses."); }
         }
 
+        // Add/Update Expense
         expenseForm.addEventListener("submit", async e => {
             e.preventDefault();
             const amount = document.getElementById("amount").value;
             const description = document.getElementById("description").value;
             const category = document.getElementById("category").value;
-
             try {
                 let res;
                 if (editMode) {
-                    // ✅ Update existing expense
                     res = await fetch(`${BASE_URL}/update/${editId}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify({ amount, description, category })
                     });
                 } else {
-                    // ✅ Add new expense
                     res = await fetch(`${BASE_URL}/add`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify({ amount, description, category })
                     });
                 }
-
                 if (res.ok) {
                     expenseForm.reset();
                     fetchExpenses();
-
-                    // Reset back to Add mode
-                    editMode = false;
-                    editId = null;
+                    editMode = false; editId = null;
                     document.querySelector("#expenseForm button[type='submit']").innerText = "Add";
-                    document.querySelector("#expenseForm button[type='submit']").classList.remove("btn-primary");
-                    document.querySelector("#expenseForm button[type='submit']").classList.add("btn-success");
-                } else {
-                    const data = await res.json();
-                    alert("❌ Operation failed: " + (data.message || "Unknown error"));
-                }
-            } catch (err) {
-                console.error(err);
-                alert("⚠️ Something went wrong.");
-            }
+                    document.querySelector("#expenseForm button[type='submit']").classList.replace("btn-primary", "btn-success");
+                } else { const data = await res.json(); alert("❌ " + (data.message || "Error")); }
+            } catch (err) { console.error(err); alert("⚠️ Something went wrong."); }
         });
 
-
+        // Edit/Delete Expense
         function editExpense(id, amount, description, category) {
             document.getElementById("amount").value = amount;
             document.getElementById("description").value = description;
             document.getElementById("category").value = category;
-
-            editMode = true;
-            editId = id;
-
-            // Change Add button to Update
+            editMode = true; editId = id;
             document.querySelector("#expenseForm button[type='submit']").innerText = "Update";
-            document.querySelector("#expenseForm button[type='submit']").classList.remove("btn-success");
-            document.querySelector("#expenseForm button[type='submit']").classList.add("btn-primary");
+            document.querySelector("#expenseForm button[type='submit']").classList.replace("btn-success", "btn-primary");
         }
 
         async function deleteExpense(id) {
-            if (!confirm("Are you sure you want to delete this expense?")) return;
+            if (!confirm("Are you sure?")) return;
             try {
-                const res = await fetch(`${BASE_URL}/delete/${id}`, {
-                    method: "DELETE",
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
+                const res = await fetch(`${BASE_URL}/delete/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
                 if (res.ok) fetchExpenses(); else alert("❌ Failed to delete expense.");
             } catch (err) { console.error(err); alert("⚠️ Error deleting expense."); }
         }
 
         fetchExpenses();
-    </script>
 
+        // Premium Payment
+        premiumBtn.addEventListener("click", async () => {
+            try {
+                const res = await fetch("/api/payments/create", { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" } });
+                const data = await res.json();
+                if (!res.ok || !data.paymentSessionId) throw new Error(data.error || "Payment init failed");
+
+                const { paymentSessionId, order_id } = data;
+                localStorage.setItem("pendingOrderId", order_id);
+                const cashfree = new Cashfree(paymentSessionId);
+                await cashfree.redirect();
+            } catch (err) { console.error(err); alert("⚠️ Payment failed"); }
+        });
+
+        // Check payment status
+        window.addEventListener("load", () => {
+            const order_id = localStorage.getItem("pendingOrderId");
+            if (!order_id) return;
+            const checkStatus = async () => {
+                try {
+                    const res = await fetch(`/api/payments/status/${order_id}`, { headers: { "Authorization": `Bearer ${token}` } });
+                    const statusData = await res.json();
+                    if (statusData.status === "SUCCESS") {
+                        alert("🎉 Payment successful!");
+                        localStorage.removeItem("pendingOrderId");
+                        window.location.href = '/premium'; // Redirect to premium page
+                    } else if (statusData.status === "FAILED") {
+                        alert("❌ Payment failed. Try again.");
+                        localStorage.removeItem("pendingOrderId");
+                        window.location.href = '/expenses'; 
+                    } else { setTimeout(checkStatus, 5000); }
+                } catch (err) { console.error(err); }
+            }
+            checkStatus();
+        });
+    </script>
 </body>
 
 </html>

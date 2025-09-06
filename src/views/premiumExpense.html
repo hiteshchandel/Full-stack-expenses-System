@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Expense Tracker with Leaderboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- ✅ Responsive scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -22,14 +22,22 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        #leaderboardContainer {
-            display: none;
-        }
-
-        /* ✅ Make table scrollable on mobile */
         .table-responsive {
             overflow-x: auto;
         }
+
+        .btn-gradient {
+            background: linear-gradient(45deg, #007bff, #00d4ff);
+            color: white;
+            border: none;
+        }
+
+        .filter-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
     </style>
 </head>
 
@@ -40,8 +48,8 @@
         <div class="card p-4 mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <h3 class="fw-bold text-primary">💰 Expense Tracker</h3>
-                <button id="premiumBtn" class="btn btn-gradient fw-semibold shadow-sm">
-                    🌟 Premium Account
+                <button id="premiumBtn" class="btn btn-gradient fw-semibold shadow-sm" disabled>
+                    ✅ Premium Active
                 </button>
             </div>
 
@@ -75,7 +83,7 @@
                         </select>
                     </div>
                     <div class="col-12 col-md-1 d-grid">
-                        <button type="submit" class="btn btn-success w-100">Add</button>
+                        <button type="submit" id="expenseSubmitBtn" class="btn btn-success w-100">Add</button>
                     </div>
                 </div>
             </form>
@@ -96,17 +104,16 @@
                 </table>
             </div>
 
-        <!-- Leaderboard Button -->
-        <div class="text-center mt-3">
-            <button id="leaderboardBtn" class="btn btn-info px-4 py-2 fw-semibold shadow-sm d-none">
-                🏆 Show Leaderboard
-            </button>
-        </div>
-
+            <!-- Leaderboard Button -->
+            <div class="text-center mt-3">
+                <button id="leaderboardBtn" class="btn btn-info px-4 py-2 fw-semibold shadow-sm">
+                    🏆 Show Leaderboard
+                </button>
+            </div>
         </div>
 
         <!-- Leaderboard -->
-        <div id="leaderboardContainer" class="card p-4">
+        <div id="leaderboardContainer" class="card p-4" style="display:none;">
             <h3 class="fw-bold text-success mb-3">🏆 Leaderboard</h3>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped text-center align-middle">
@@ -126,57 +133,62 @@
             </div>
         </div>
 
+        <!-- Reports Section -->
+        <div class="card p-4 mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <h3 class="fw-bold text-primary">📊 Premium Expense Reports</h3>
+                <button id="downloadBtn" class="btn btn-gradient fw-semibold shadow-sm">
+                    ⬇️ Download Report
+                </button>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button class="btn btn-outline-primary filter-btn" data-type="daily">Daily</button>
+                <button class="btn btn-outline-primary filter-btn" data-type="weekly">Weekly</button>
+                <button class="btn btn-outline-primary filter-btn" data-type="monthly">Monthly</button>
+                <button class="btn btn-outline-secondary filter-btn" data-type="all">Show All</button>
+            </div>
+
+            <!-- Reports Table -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped text-center align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Amount</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <!-- <th>Type</th> -->
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportBody">
+                        <tr>
+                            <td colspan="5" class="text-center">No data yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
-    <script src="https://sdk.cashfree.com/js/ui/2.0.0/cashfree.sandbox.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 
     <script>
         const token = localStorage.getItem('token');
         if (!token) { alert("⚠️ Login required"); window.location.href = "/"; }
 
-        const premiumBtn = document.getElementById("premiumBtn");
         const leaderboardBtn = document.getElementById("leaderboardBtn");
         const leaderboardContainer = document.getElementById("leaderboardContainer");
         const leaderboardBody = document.getElementById("leaderboardBody");
+        const expenseForm = document.getElementById("expenseForm");
+        const expenseBody = document.getElementById("expenseBody");
+        const submitBtn = document.getElementById("expenseSubmitBtn");
+
         let editMode = false;
         let editId = null;
-        // ✅ Check if user is premium
-        async function checkUserPremium() {
-            try {
-                const res = await fetch('/api/user/', { headers: { "Authorization": `Bearer ${token}` } });
-                const result = await res.json();
-                if (!res.ok || !result.success) return;
-                const user = result.data;
-
-                if (user.isPremium) activatePremiumUI();
-            } catch (err) { console.error(err); }
-        }
-
-        function activatePremiumUI() {
-            premiumBtn.innerText = "✅ Premium Active";
-            premiumBtn.disabled = true;
-            leaderboardBtn.classList.remove("d-none"); // ✅ Show only for premium users
-        }
-
-        // ✅ Premium payment
-        premiumBtn.addEventListener("click", async () => {
-            try {
-                const res = await fetch("/api/payments/create", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }
-                });
-                const data = await res.json();
-                if (!res.ok || !data.paymentSessionId) throw new Error(data.error || "Payment init failed");
-
-                const { paymentSessionId, order_id } = data;
-                localStorage.setItem("pendingOrderId", order_id);
-
-                const cashfree = new Cashfree(paymentSessionId);
-                await cashfree.redirect();
-            } catch (err) { console.error(err); alert("⚠️ Payment failed"); }
-        });
+        let expenses = []; // ✅ Global expenses array
 
         // ✅ Fetch Leaderboard
         async function fetchLeaderboard() {
@@ -190,19 +202,22 @@
                 leaderboardBody.innerHTML = "";
                 data.data.forEach((user, index) => {
                     leaderboardBody.insertAdjacentHTML("beforeend", `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${user.name}</td>
-                <td>₹${parseFloat(user.totalExpense).toFixed(2)}</td>
-            </tr>`);
+                        <tr>
+                          <td>${index + 1}</td>
+                          <td>${user.name}</td>
+                          <td>₹${parseFloat(user.totalExpense).toFixed(2)}</td>
+                        </tr>`);
                 });
-            } catch (err) { console.error(err); alert("⚠️ Could not fetch leaderboard."); }
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Could not fetch leaderboard.");
+            }
         }
 
         // ✅ Toggle Leaderboard
         leaderboardBtn.addEventListener("click", async () => {
-            if (leaderboardContainer.style.display === "none" || leaderboardContainer.style.display === "") {
-                await fetchLeaderboard(); // load data
+            if (leaderboardContainer.style.display === "none") {
+                await fetchLeaderboard();
                 leaderboardContainer.style.display = "block";
                 leaderboardBtn.innerText = "🙈 Hide Leaderboard";
             } else {
@@ -211,34 +226,35 @@
             }
         });
 
-        checkUserPremium();
-
         // ✅ Expense handling
         const BASE_URL = "/api/expense";
-        const expenseForm = document.getElementById("expenseForm");
-        const expenseBody = document.getElementById("expenseBody");
 
         async function fetchExpenses() {
             try {
                 const res = await fetch(`${BASE_URL}/get`, { headers: { "Authorization": `Bearer ${token}` } });
-                const expenses = await res.json();
+                expenses = await res.json(); // ✅ store globally
                 if (!res.ok) throw new Error(expenses.message || "Failed to fetch expenses");
 
                 expenseBody.innerHTML = "";
                 expenses.forEach(exp => {
-                expenseBody.insertAdjacentHTML("beforeend", `
-                    <tr>
-                    <td>₹${exp.amount.toFixed(2)}</td>
-                    <td>${exp.description}</td>
-                    <td>${exp.category}</td>
-                    <td>${new Date(exp.createdAt).toLocaleString()}</td>
-                    <td>
-                        <button class="btn btn-warning btn-sm" onclick="editExpense(${exp.id}, ${exp.amount}, '${exp.description}', '${exp.category}')">Update</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteExpense(${exp.id})">Delete</button>
-                    </td>
-                    </tr>`);
+                    expenseBody.insertAdjacentHTML("beforeend", `
+                        <tr>
+                          <td>₹${parseFloat(exp.amount).toFixed(2)}</td>
+                          <td>${exp.description}</td>
+                          <td>${exp.category}</td>
+                          <td>${new Date(exp.createdAt).toLocaleString()}</td>
+                          <td>
+                            <button class="btn btn-warning btn-sm" onclick="editExpense(${exp.id}, ${exp.amount}, '${exp.description}', '${exp.category}')">Update</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteExpense(${exp.id})">Delete</button>
+                          </td>
+                        </tr>`);
                 });
-            } catch (err) { console.error(err); alert("⚠️ Could not fetch expenses."); }
+
+                renderTable(expenses); // ✅ also update reports
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Could not fetch expenses.");
+            }
         }
 
         expenseForm.addEventListener("submit", async e => {
@@ -250,14 +266,12 @@
             try {
                 let res;
                 if (editMode) {
-                    // ✅ Update existing expense
                     res = await fetch(`${BASE_URL}/update/${editId}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                         body: JSON.stringify({ amount, description, category })
                     });
                 } else {
-                    // ✅ Add new expense
                     res = await fetch(`${BASE_URL}/add`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
@@ -268,13 +282,10 @@
                 if (res.ok) {
                     expenseForm.reset();
                     fetchExpenses();
-
-                    // Reset back to Add mode
                     editMode = false;
                     editId = null;
-                    document.querySelector("#expenseForm button[type='submit']").innerText = "Add";
-                    document.querySelector("#expenseForm button[type='submit']").classList.remove("btn-primary");
-                    document.querySelector("#expenseForm button[type='submit']").classList.add("btn-success");
+                    submitBtn.innerText = "Add";
+                    submitBtn.className = "btn btn-success w-100";
                 } else {
                     const data = await res.json();
                     alert("❌ Operation failed: " + (data.message || "Unknown error"));
@@ -285,35 +296,120 @@
             }
         });
 
-
-        function editExpense(id, amount, description, category) {
+        window.editExpense = function (id, amount, description, category) {
             document.getElementById("amount").value = amount;
             document.getElementById("description").value = description;
             document.getElementById("category").value = category;
-
             editMode = true;
             editId = id;
+            submitBtn.innerText = "Update";
+            submitBtn.className = "btn btn-primary w-100";
+        };
 
-            // Change Add button to Update
-            document.querySelector("#expenseForm button[type='submit']").innerText = "Update";
-            document.querySelector("#expenseForm button[type='submit']").classList.remove("btn-success");
-            document.querySelector("#expenseForm button[type='submit']").classList.add("btn-primary");
-        }
-
-        async function deleteExpense(id) {
+        window.deleteExpense = async function (id) {
             if (!confirm("Are you sure you want to delete this expense?")) return;
             try {
                 const res = await fetch(`${BASE_URL}/delete/${id}`, {
                     method: "DELETE",
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-                if (res.ok) fetchExpenses(); else alert("❌ Failed to delete expense.");
-            } catch (err) { console.error(err); alert("⚠️ Error deleting expense."); }
+                if (res.ok) fetchExpenses();
+                else alert("❌ Failed to delete expense.");
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Error deleting expense.");
+            }
+        };
+
+        // ✅ Reports
+        const downloadBtn = document.getElementById("downloadBtn");
+        const reportBody = document.getElementById("reportBody");
+        const filterBtns = document.querySelectorAll(".filter-btn");
+
+        function renderTable(data) {
+            reportBody.innerHTML = "";
+            if (!data || data.length === 0) {
+                reportBody.innerHTML = `<tr><td colspan="5">No records found</td></tr>`;
+                return;
+            }
+            data.forEach(exp => {
+                reportBody.insertAdjacentHTML("beforeend", `
+                <tr>
+                    <td>₹${parseFloat(exp.amount).toFixed(2)}</td>
+                    <td>${exp.description}</td>
+                    <td>${exp.category}</td>
+                    <td>${new Date(exp.createdAt).toLocaleString()}</td>
+                </tr>`);
+            });
         }
 
-        fetchExpenses();
-    </script>
+        function filterExpenses(type) {
+            const now = new Date();
+            let filtered = [];
+            if (type === "daily") {
+                filtered = expenses.filter(e => new Date(e.createdAt).toDateString() === now.toDateString());
+            } else if (type === "weekly") {
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay());
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 7);
+                filtered = expenses.filter(e => {
+                    let d = new Date(e.createdAt);
+                    return d >= startOfWeek && d < endOfWeek;
+                });
+            } else if (type === "monthly") {
+                filtered = expenses.filter(e => {
+                    let d = new Date(e.createdAt);
+                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                });
+            } else {
+                filtered = expenses;
+            }
+            renderTable(filtered);
+        }
 
+        filterBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                filterBtns.forEach(b => b.classList.remove("active")); // remove from others
+                btn.classList.add("active"); // highlight clicked
+                filterExpenses(btn.dataset.type);
+            });
+        });
+
+    // ✅ Download Report (CSV in frontend)
+        downloadBtn.addEventListener("click", () => {
+            if (!expenses || expenses.length === 0) {
+                alert("⚠️ No expenses to download.");
+                return;
+            }
+
+            // Convert expenses to CSV
+            const headers = ["Amount", "Description", "Category", "Date"];
+            const rows = expenses.map(exp => [
+                exp.amount,
+                `"${exp.description}"`,
+                exp.category,
+                new Date(exp.createdAt).toLocaleString()
+            ]);
+
+            let csvContent = [headers, ...rows].map(r => r.join(",")).join("\n");
+
+            // Download
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "Expense_Report.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert("✅ Report downloaded successfully!");
+        });
+
+        // ✅ Init
+        fetchExpenses();
+
+    </script>
 </body>
 
 </html>
