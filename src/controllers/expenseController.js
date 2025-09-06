@@ -1,6 +1,7 @@
 const Expense = require('../models/Expense');
 const User = require('../models/User');
 const sequelize = require('../config/db');
+const { where } = require('sequelize');
 
 exports.createExpense = async (req, res) => {
     const t = await sequelize.transaction();
@@ -69,5 +70,43 @@ exports.deleteExpense = async (req, res) => {
         await t.rollback();
         console.error("❌ Error deleting expense:", error);
         res.status(500).json({ error: 'Failed to delete expense' });
+    }
+};
+
+exports.updateExpense = async (req, res) => {
+    const t = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+        const { amount, description, category } = req.body;
+
+        const expense = await Expense.findOne({
+            where: { id, userId: req.user.id },
+            transaction: t
+        });
+
+        if (!expense) {
+            await t.rollback();
+            res.status(404).json({ error: "Expense not found" });
+        }
+
+        const user = await User.findByPk(req.user.id, { transaction: t });
+        const oldAmount = parseFloat(expense.amount);
+        const newAmount = parseFloat(amount);
+
+        user.totalExpense = (parseFloat(user.totalExpense) - oldAmount) + newAmount;
+        await user.save({ transaction: t });
+
+        expense.amount = amount;
+        expense.description = description;
+        expense.category = category;
+
+        await expense.save({ transaction: t });
+        await t.commit();
+        res.status(200).json({ message: "expense updated successfully", expense });
+
+    } catch (error) {
+        await t.rollback();
+        console.error("Error updating expense : ", error);
+        res.status(500).json({ error: "Server Error" });
     }
 };
