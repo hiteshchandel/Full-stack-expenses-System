@@ -9,6 +9,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const userRoutes = require('./routes/userRoutes')
 const passwordRoutes = require('./routes/forgotPassword');
+const reportRoutes = require('./routes/reportRoutes');
 const path = require("path");
 
 const app = express();
@@ -40,6 +41,7 @@ app.use('/api/expense', expenseRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/password', passwordRoutes);
+app.use('/api/report', reportRoutes);
 
 sequelize.sync({alter:true})
     .then(() => {

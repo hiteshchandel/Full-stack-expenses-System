@@ -158,13 +158,12 @@
                             <th>Amount</th>
                             <th>Description</th>
                             <th>Category</th>
-                            <!-- <th>Type</th> -->
                             <th>Date</th>
                         </tr>
                     </thead>
                     <tbody id="reportBody">
                         <tr>
-                            <td colspan="5" class="text-center">No data yet</td>
+                            <td colspan="4" class="text-center">No data yet</td>
                         </tr>
                     </tbody>
                 </table>
@@ -325,6 +324,7 @@
         const downloadBtn = document.getElementById("downloadBtn");
         const reportBody = document.getElementById("reportBody");
         const filterBtns = document.querySelectorAll(".filter-btn");
+        let currentFilter = "all";
 
         function renderTable(data) {
             reportBody.innerHTML = "";
@@ -342,72 +342,57 @@
                 </tr>`);
             });
         }
-
-        function filterExpenses(type) {
-            const now = new Date();
-            let filtered = [];
-            if (type === "daily") {
-                filtered = expenses.filter(e => new Date(e.createdAt).toDateString() === now.toDateString());
-            } else if (type === "weekly") {
-                const startOfWeek = new Date(now);
-                startOfWeek.setDate(now.getDate() - now.getDay());
-                const endOfWeek = new Date(startOfWeek);
-                endOfWeek.setDate(startOfWeek.getDate() + 7);
-                filtered = expenses.filter(e => {
-                    let d = new Date(e.createdAt);
-                    return d >= startOfWeek && d < endOfWeek;
+        // ✅ Fetch Report from Backend
+        async function fetchReport(filterType) {
+            try {
+                const res = await fetch(`/api/report/generate?filter=${filterType}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
                 });
-            } else if (type === "monthly") {
-                filtered = expenses.filter(e => {
-                    let d = new Date(e.createdAt);
-                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                });
-            } else {
-                filtered = expenses;
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || "Failed to fetch report");
+                }
+                renderTable(data.data);
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Could not fetch report.");
             }
-            renderTable(filtered);
         }
 
         filterBtns.forEach(btn => {
             btn.addEventListener("click", () => {
                 filterBtns.forEach(b => b.classList.remove("active")); // remove from others
-                btn.classList.add("active"); // highlight clicked
-                filterExpenses(btn.dataset.type);
+                btn.classList.add("active"); 
+                currentFilter = btn.dataset.type;
+                fetchReport(currentFilter);
             });
         });
 
     // ✅ Download Report (CSV in frontend)
-        downloadBtn.addEventListener("click", () => {
-            if (!expenses || expenses.length === 0) {
-                alert("⚠️ No expenses to download.");
-                return;
+        downloadBtn.addEventListener("click", async () => {
+            try {
+                const res = await fetch(`/api/report/download?filter=${currentFilter}`,{
+                    headers : {"Authorization": `Bearer ${token}`}
+                });
+
+                // Convert response to blob for download
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Expense_Report_${currentFilter}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error(error);
+                alert("⚠️ Could not download report.")
             }
-
-            // Convert expenses to CSV
-            const headers = ["Amount", "Description", "Category", "Date"];
-            const rows = expenses.map(exp => [
-                exp.amount,
-                `"${exp.description}"`,
-                exp.category,
-                new Date(exp.createdAt).toLocaleString()
-            ]);
-
-            let csvContent = [headers, ...rows].map(r => r.join(",")).join("\n");
-
-            // Download
-            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "Expense_Report.csv";
-            a.click();
-            URL.revokeObjectURL(url);
-
-            alert("✅ Report downloaded successfully!");
         });
 
         // ✅ Init
+        document.querySelector('[data-type="all"]').classList.add("active");
         fetchExpenses();
+        fetchReport("all");
 
     </script>
 </body>
