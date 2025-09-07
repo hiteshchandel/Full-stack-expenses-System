@@ -103,11 +103,27 @@
                     <tbody id="expenseBody"></tbody>
                 </table>
             </div>
-            <div class="d-flex justify-content-between mt-3">
-                <button id="prevBtn" class="btn btn-dark">⬅ Prev</button>
-                <span id="pageInfo" class="fw-bold align-self-center"></span>
-                <button id="nextBtn" class="btn btn-dark">Next ➡</button>
+            <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                <!-- Page size selector -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="fw-semibold mb-0">Expenses per page:</label>
+                    <select id="pageSize" class="form-select form-select-sm w-auto">
+                        <option value="2">2</option>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="40">40</option>
+                    </select>
+                </div>
+            
+                <!-- Pagination controls -->
+                <div class="d-flex align-items-center gap-3">
+                    <button id="prevBtn" class="btn btn-sm btn-outline-dark px-3">⬅ Prev</button>
+                    <span id="pageInfo" class="fw-bold"></span>
+                    <button id="nextBtn" class="btn btn-sm btn-outline-dark px-3">Next ➡</button>
+                </div>
             </div>
+
             <!-- Leaderboard Button -->
             <div class="text-center mt-3">
                 <button id="leaderboardBtn" class="btn btn-info px-4 py-2 fw-semibold shadow-sm">
@@ -233,8 +249,13 @@
         const BASE_URL = "/api/expense";
 
         let currentPage = 1;
-        const limit = 5;
         let totalPages = 1;
+
+        let limit = localStorage.getItem("expensesPerPage")
+                        ? parseInt(localStorage.getItem("expensesPerPage"))
+                        : 5;
+
+        document.getElementById("pageSize").value = limit;
 
         // Fetch Expenses
         async function fetchExpenses(page = 1) {
@@ -267,8 +288,17 @@
                 currentPage = data.page;
                 totalPages = data.totalPages;
                 document.getElementById("pageInfo").innerText = `Page ${currentPage} of ${totalPages}`;
-                document.getElementById("prevBtn").disabled = currentPage === 1;
-                document.getElementById("nextBtn").disabled = currentPage === totalPages;
+                const prevBtn = document.getElementById("prevBtn");
+                const nextBtn = document.getElementById("nextBtn");
+
+                // 🔹 If no expenses or only one page
+                if (totalPages <= 1) {
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                } else {
+                    prevBtn.disabled = currentPage === 1;
+                    nextBtn.disabled = currentPage === totalPages;
+                }
 
             } catch (err) {
                 console.error(err);
@@ -284,7 +314,15 @@
 
         document.getElementById("nextBtn").addEventListener("click", () => {
             if (currentPage < totalPages) fetchExpenses(currentPage + 1);
-        });        
+        });  
+
+        // 🔹 Handle Page Size Change
+        document.getElementById("pageSize").addEventListener("change", e => {
+            limit = parseInt(e.target.value);
+            localStorage.setItem("expensesPerPage", limit);  // Save preference
+            currentPage = 1; // reset to first page
+            fetchExpenses();
+        });              
 
         expenseForm.addEventListener("submit", async e => {
             e.preventDefault();

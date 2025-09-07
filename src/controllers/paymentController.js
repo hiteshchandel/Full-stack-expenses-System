@@ -7,7 +7,7 @@ const sequelize = require('../config/db')
 exports.createPayment = async (req, res) => {
     const t = await sequelize.transaction();
 
-    const order_amount = "999";
+    const order_amount = "99";
     const order_id = "order_" + Date.now();
     const customer_id = String(req.user.id);
     const customer_phone = req.user.mobile;
