@@ -46,12 +46,20 @@
 
         <!-- Expense Tracker -->
         <div class="card p-4 mb-4">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                <h3 class="fw-bold text-primary">💰 Expense Tracker</h3>
-                <button id="premiumBtn" class="btn btn-gradient fw-semibold shadow-sm" disabled>
-                    ✅ Premium Active
-                </button>
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+                <!-- Left: App Title -->
+                <h3 class="fw-bold text-primary m-0">💰 Expense Tracker</h3>
+
+                <!-- User Premium Badge -->
+                <div>
+                    <span class="badge rounded-pill px-4 py-2 fw-semibold shadow-sm"
+                        style="background: linear-gradient(90deg, #007bff, #00d4ff); color: #fff; font-size: 0.95rem;">
+                        🌟 <span id="userName" style="font-weight: 700; text-shadow: 0 0 3px #000;">Hitesh Chandel</span> — Premium Member
+                    </span>
+                </div>
+
             </div>
+
 
             <!-- Add Expense Form -->
             <form id="expenseForm" class="mb-3">
@@ -188,6 +196,10 @@
                     </tbody>
                 </table>
             </div>
+            <!-- ✅ Total Amount Display -->
+            <div class="text-end fw-bold mt-2" id="totalAmountDisplay">
+                Total Amount: ₹0.00
+            </div>
         </div>
 
     </div>
@@ -197,6 +209,16 @@
     <script>
         const token = localStorage.getItem('token');
         if (!token) { alert("⚠️ Login required"); window.location.href = "/"; }
+
+        (() => {
+            const name = localStorage.getItem('name');
+            if (name) {
+                document.getElementById("userName").innerText = `${name}`;
+            } else {
+                document.getElementById("userName").innerText = "Guest";
+            }
+        })();
+
 
         const leaderboardBtn = document.getElementById("leaderboardBtn");
         const leaderboardContainer = document.getElementById("leaderboardContainer");
@@ -396,11 +418,15 @@
 
         function renderTable(data) {
             reportBody.innerHTML = "";
+            let total = 0;
+
             if (!data || data.length === 0) {
                 reportBody.innerHTML = `<tr><td colspan="5">No records found</td></tr>`;
+                document.getElementById("totalAmountDisplay").innerText = "Total Amount: ₹0.00";
                 return;
             }
             data.forEach(exp => {
+                total += parseFloat(exp.amount);
                 reportBody.insertAdjacentHTML("beforeend", `
                 <tr>
                     <td>₹${parseFloat(exp.amount).toFixed(2)}</td>
@@ -409,6 +435,10 @@
                     <td>${new Date(exp.createdAt).toLocaleString()}</td>
                 </tr>`);
             });
+
+            // ✅ Update total below table
+            document.getElementById("totalAmountDisplay").innerText =
+                `Total Amount: ₹${total.toFixed(2)}`;
         }
         // ✅ Fetch Report from Backend
         async function fetchReport(filterType) {
