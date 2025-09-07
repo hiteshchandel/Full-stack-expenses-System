@@ -30,10 +30,27 @@ exports.createExpense = async (req, res) => {
 
 exports.getExpenses = async (req, res) => {
     try {
-        const expenses = await Expense.findAll({
-            where: { userId: req.user.id }
+        let { page, limit } = req.query;
+
+        page = parseInt(page) || 1;
+        limit = parseInt(limit) || 5;
+
+        const offset = (page - 1) * limit;
+
+        const { count, rows } = await Expense.findAndCountAll({
+            where: { userId: req.user.id },
+            offset,
+            limit,
+            order: [["createdAt", "DESC"]]
         });
-        res.status(200).json(expenses);
+
+        res.status(200).json({
+            total: count,
+            page,
+            totalPages: Math.ceil(count / limit),
+            
+            expenses: rows
+        });
     } catch (error) {
         console.error("❌ Error fetching expenses:", error);
         res.status(500).json({ error: 'Failed to retrieve expenses' });

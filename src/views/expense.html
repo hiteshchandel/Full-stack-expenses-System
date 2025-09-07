@@ -79,6 +79,11 @@
                     </thead>
                     <tbody id="expenseBody"></tbody>
                 </table>
+                <div class="d-flex justify-content-between mt-3">
+                    <button id="prevBtn" class="btn btn-dark">⬅ Prev</button>
+                    <span id="pageInfo" class="fw-bold align-self-center"></span>
+                    <button id="nextBtn" class="btn btn-dark">Next ➡</button>
+                </div>
             </div>
 
         </div>
@@ -98,13 +103,24 @@
         const expenseForm = document.getElementById("expenseForm");
         const expenseBody = document.getElementById("expenseBody");
 
+        let currentPage = 1;
+        const limit = 5;
+        let totalPages = 1;
+
         // Fetch Expenses
-        async function fetchExpenses() {
+        async function fetchExpenses(page = 1) {
             try {
-                const res = await fetch(`${BASE_URL}/get`, { headers: { "Authorization": `Bearer ${token}` } });
-                const expenses = await res.json();
+                const res = await fetch(`${BASE_URL}/get?page=${page}&limit=${limit}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || "Failed to load");
+                }
+
                 expenseBody.innerHTML = "";
-                expenses.forEach(exp => {
+                data.expenses.forEach(exp => {
                     expenseBody.insertAdjacentHTML("beforeend", `
                 <tr>
                     <td>₹${exp.amount.toFixed(2)}</td>
@@ -117,8 +133,29 @@
                     </td>
                 </tr>`);
                 });
-            } catch (err) { console.error(err); alert("⚠️ Could not fetch expenses."); }
+
+                // ✅ Update pagination state
+                currentPage = data.page;
+                totalPages = data.totalPages;
+                document.getElementById("pageInfo").innerText = `Page ${currentPage} of ${totalPages}`;
+                document.getElementById("prevBtn").disabled = currentPage === 1;
+                document.getElementById("nextBtn").disabled = currentPage === totalPages;
+
+            } catch (err) {
+                console.error(err);
+                alert("⚠️ Could not fetch expenses.");
+            }
         }
+
+
+        // Pagination button events
+        document.getElementById("prevBtn").addEventListener("click", () => {
+            if (currentPage > 1) fetchExpenses(currentPage - 1);
+        });
+
+        document.getElementById("nextBtn").addEventListener("click", () => {
+            if (currentPage < totalPages) fetchExpenses(currentPage + 1);
+        });        
 
         // Add/Update Expense
         expenseForm.addEventListener("submit", async e => {
