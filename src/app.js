@@ -11,11 +11,15 @@ const userRoutes = require('./routes/userRoutes')
 const passwordRoutes = require('./routes/forgotPassword');
 const reportRoutes = require('./routes/reportRoutes');
 const path = require("path");
+const helmet = require('helmet');
+const compression = require('compression');
 
 const app = express();
+app.use(compression());
 
-// app.use(cors());
-// app.use(bodyParser.json());
+
+app.use(express.static(path.join(__dirname, "public")));
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
