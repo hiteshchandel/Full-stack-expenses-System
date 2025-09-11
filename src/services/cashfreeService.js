@@ -30,8 +30,8 @@ exports.createOrder = async (
                 customer_phone
             },
             order_meta: {
-                return_url: `http://localhost:3000/expenses`,
-                notify_url: "http://localhost:3000/payment/notify",
+                return_url: `${process.env.BASE_URL}expenses`,
+                notify_url: `${process.env.BASE_URL}payment/notify`,
                 payment_methods: "cc,dc,upi"
             },
             order_expiry_time: expiry

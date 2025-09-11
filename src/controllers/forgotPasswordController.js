@@ -21,7 +21,7 @@ exports.forgotPassword = async (req, res) => {
             userId: user.id,
         });
 
-        const resetLink = `http://localhost:3000/api/password/resetpassword/${request.id}`
+        const resetLink = `${process.env.BASE_URL}api/password/resetpassword/${request.id}`
 
         await brevo.sendTransacEmail({
         sender: {
