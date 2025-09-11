@@ -15,7 +15,7 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         allowNull: false,
         unique: {
-            name: "unique_user_email",   // 👈 add a fixed name
+            name: "unique_user_email",   
             msg: "Email must be unique"
         },
         validate: {

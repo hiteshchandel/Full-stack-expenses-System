@@ -3,7 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const {sequelize }= require('./models/association');
-// const User = require('./models/User');
+const fs = require("fs");
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
@@ -13,9 +13,17 @@ const reportRoutes = require('./routes/reportRoutes');
 const path = require("path");
 const helmet = require('helmet');
 const compression = require('compression');
+const morgan = require('morgan');
+
 
 const app = express();
+let logfile = fs.createWriteStream(
+    path.join(__dirname, 'access.log'),
+    { flags: 'a' }
+);
 app.use(compression());
+app.use(morgan('combined', { stream: logfile }));
+
 
 
 app.use(express.static(path.join(__dirname, "public")));
